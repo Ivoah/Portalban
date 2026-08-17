@@ -28,7 +28,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char* argv[]) {
 
     if (!loadLevelTextures(renderer)) return SDL_APP_FAILURE;
 
-    currentLevel = loadLevel("levels/0.txt");
+    currentLevel = loadLevel(0);
     if (currentLevel == NULL) return SDL_APP_FAILURE;
 
     return SDL_APP_CONTINUE;
@@ -40,17 +40,32 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
     } else if (event->type == SDL_EVENT_KEY_DOWN) {
         switch (event->key.scancode) {
             case SDL_SCANCODE_UP:
+            case SDL_SCANCODE_W:
                 move(currentLevel, V_UP);
-                break;
+                return SDL_APP_CONTINUE;
             case SDL_SCANCODE_DOWN:
+            case SDL_SCANCODE_S:
                 move(currentLevel, V_DOWN);
-                break;
+                return SDL_APP_CONTINUE;
             case SDL_SCANCODE_LEFT:
+            case SDL_SCANCODE_A:
                 move(currentLevel, V_LEFT);
-                break;
+                return SDL_APP_CONTINUE;
             case SDL_SCANCODE_RIGHT:
+            case SDL_SCANCODE_D:
                 move(currentLevel, V_RIGHT);
+                return SDL_APP_CONTINUE;
+            default:
                 break;
+        }
+        switch (event->key.key) {
+            case SDLK_R:
+                {} // Silence warning: label followed by a declaration is a C23 extension
+                int num = currentLevel->levelNum;
+                SDL_free(currentLevel);
+                currentLevel = loadLevel(currentLevel->levelNum);
+                if (currentLevel == NULL) return SDL_APP_FAILURE;
+                else return SDL_APP_CONTINUE;
             default:
                 break;
         }
@@ -66,6 +81,12 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     drawLevel(renderer, currentLevel, center);
 
     SDL_RenderPresent(renderer);
+
+    if (isWon(currentLevel)) {
+        int nextLevel = currentLevel->levelNum + 1;
+        SDL_free(currentLevel);
+        currentLevel = loadLevel(nextLevel);
+    } 
 
     return SDL_APP_CONTINUE;
 }

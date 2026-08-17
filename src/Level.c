@@ -22,18 +22,18 @@ static SDL_Texture* textures[NUM_TX] = {};
 
 bool loadLevelTextures(SDL_Renderer* renderer) {
     SDL_Surface* surface = NULL;
-    char* png_path = NULL;
+    char* pngPath = NULL;
 
     // Skip first entry in texture_paths
     for (int i = 1; i < NUM_TX; i++) {
-        SDL_asprintf(&png_path, "%s%s", SDL_GetBasePath(), texture_paths[i]);
-        surface = SDL_LoadPNG(png_path);
+        SDL_asprintf(&pngPath, "%s%s", SDL_GetBasePath(), texture_paths[i]);
+        surface = SDL_LoadPNG(pngPath);
         if (!surface) {
             SDL_Log("Couldn't load png: %s", SDL_GetError());
             return false;
         }
 
-        SDL_free(png_path);
+        SDL_free(pngPath);
 
         textures[i] = SDL_CreateTextureFromSurface(renderer, surface);
         if (!textures[i]) {
@@ -51,13 +51,18 @@ void unloadLevelTextures() {
     for (int i = 0; i < NUM_TX; i++) SDL_DestroyTexture(textures[i]);
 }
 
-Level* loadLevel(const char* path) {
-    char* mapData = SDL_LoadFile(path, NULL);
+Level* loadLevel(int num) {
+    char* levelPath = NULL;
+
+    SDL_asprintf(&levelPath, "%slevels/%d.txt", SDL_GetBasePath(), num);
+    char* mapData = SDL_LoadFile(levelPath, NULL);
+    SDL_free(levelPath);
     if (mapData == NULL) {
         SDL_Log("Could not load map: %s", SDL_GetError());
         return NULL;
     }
     Level* newLevel = SDL_calloc(1, sizeof(Level));
+    newLevel->levelNum = num;
 
     int x = 0, y = 0;
     for (int i = 0; mapData[i] != 0; i++) {

@@ -11,6 +11,7 @@ typedef struct {
 
 #define MAX_CUBES 10
 typedef struct {
+    int levelNum;
     int tiles[32][32];
     int width;
     int height;
@@ -23,7 +24,7 @@ typedef struct {
 
 bool loadLevelTextures(SDL_Renderer*);
 void unloadLevelTextures();
-Level* loadLevel(const char*);
+Level* loadLevel(int);
 void drawLevel(SDL_Renderer*, Level*, Vec2);
 // bool canMove(Level*, Vec2, Vec2);
 void move(Level*, Vec2);
