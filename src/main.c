@@ -35,6 +35,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char* argv[]) {
 }
 
 SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
+    int levelToLoad = -1;
+
     if (event->type == SDL_EVENT_QUIT) {
         return SDL_APP_SUCCESS;
     } else if (event->type == SDL_EVENT_KEY_DOWN) {
@@ -60,16 +62,25 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
         }
         switch (event->key.key) {
             case SDLK_R:
-                {} // Silence warning: label followed by a declaration is a C23 extension
-                int num = currentLevel->levelNum;
-                SDL_free(currentLevel);
-                currentLevel = loadLevel(currentLevel->levelNum);
-                if (currentLevel == NULL) return SDL_APP_FAILURE;
-                else return SDL_APP_CONTINUE;
+                levelToLoad = currentLevel->levelNum;
+                break;
+            case SDLK_COMMA:
+                levelToLoad = currentLevel->levelNum - 1;
+                break;
+            case SDLK_PERIOD:
+                levelToLoad = currentLevel->levelNum + 1;
+                break;
             default:
                 break;
         }
     }
+
+    if (levelToLoad != -1) {
+        SDL_free(currentLevel);
+        currentLevel = loadLevel(levelToLoad);
+        if (currentLevel == NULL) return SDL_APP_FAILURE;
+    }
+
     return SDL_APP_CONTINUE;
 }
 
