@@ -78,7 +78,7 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
     if (levelToLoad != -1) {
         SDL_free(currentLevel);
         currentLevel = loadLevel(levelToLoad);
-        if (currentLevel == NULL) return SDL_APP_FAILURE;
+        if (currentLevel == NULL) return SDL_APP_SUCCESS;
     }
 
     return SDL_APP_CONTINUE;
@@ -97,6 +97,7 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
         int nextLevel = currentLevel->levelNum + 1;
         SDL_free(currentLevel);
         currentLevel = loadLevel(nextLevel);
+        if (currentLevel == NULL) return SDL_APP_SUCCESS;
     } 
 
     return SDL_APP_CONTINUE;
