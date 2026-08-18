@@ -44,19 +44,31 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
             case SDL_SCANCODE_UP:
             case SDL_SCANCODE_W:
                 move(currentLevel, V_UP);
-                return SDL_APP_CONTINUE;
+                break;
             case SDL_SCANCODE_DOWN:
             case SDL_SCANCODE_S:
                 move(currentLevel, V_DOWN);
-                return SDL_APP_CONTINUE;
+                break;
             case SDL_SCANCODE_LEFT:
             case SDL_SCANCODE_A:
                 move(currentLevel, V_LEFT);
-                return SDL_APP_CONTINUE;
+                break;
             case SDL_SCANCODE_RIGHT:
             case SDL_SCANCODE_D:
                 move(currentLevel, V_RIGHT);
-                return SDL_APP_CONTINUE;
+                break;
+            case SDL_SCANCODE_I:
+                shoot(currentLevel, V_UP);
+                break;
+            case SDL_SCANCODE_J:
+                shoot(currentLevel, V_DOWN);
+                break;
+            case SDL_SCANCODE_K:
+                shoot(currentLevel, V_LEFT);
+                break;
+            case SDL_SCANCODE_L:
+                shoot(currentLevel, V_RIGHT);
+                break;
             default:
                 break;
         }

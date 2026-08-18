@@ -175,6 +175,10 @@ void move(Level* level, Vec2 dir) {
     }
 }
 
+void shoot(Level* level, Vec2 dir) {
+    
+}
+
 bool isWon(Level* level) {
     for (int i = 0; i < level->height; i++) {
         for (int j = 0; j < level->width; j++) {

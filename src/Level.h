@@ -26,6 +26,6 @@ bool loadLevelTextures(SDL_Renderer*);
 void unloadLevelTextures();
 Level* loadLevel(int);
 void drawLevel(SDL_Renderer*, Level*, Vec2);
-// bool canMove(Level*, Vec2, Vec2);
 void move(Level*, Vec2);
+void shoot(Level*, Vec2);
 bool isWon(Level*);
