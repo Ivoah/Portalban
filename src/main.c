@@ -26,9 +26,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char* argv[]) {
     }
     SDL_SetRenderLogicalPresentation(renderer, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 
-    if (!loadLevelTextures(renderer)) return SDL_APP_FAILURE;
+    if (!Level_loadTextures(renderer)) return SDL_APP_FAILURE;
 
-    currentLevel = loadLevel(0);
+    currentLevel = Level_load(0);
     if (currentLevel == NULL) return SDL_APP_FAILURE;
 
     return SDL_APP_CONTINUE;
@@ -43,31 +43,31 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
         switch (event->key.scancode) {
             case SDL_SCANCODE_UP:
             case SDL_SCANCODE_W:
-                move(currentLevel, V_UP);
+                Level_move(currentLevel, V_UP);
                 break;
             case SDL_SCANCODE_DOWN:
             case SDL_SCANCODE_S:
-                move(currentLevel, V_DOWN);
+                Level_move(currentLevel, V_DOWN);
                 break;
             case SDL_SCANCODE_LEFT:
             case SDL_SCANCODE_A:
-                move(currentLevel, V_LEFT);
+                Level_move(currentLevel, V_LEFT);
                 break;
             case SDL_SCANCODE_RIGHT:
             case SDL_SCANCODE_D:
-                move(currentLevel, V_RIGHT);
+                Level_move(currentLevel, V_RIGHT);
                 break;
             case SDL_SCANCODE_I:
-                shoot(currentLevel, V_UP);
+                Level_shoot(currentLevel, V_UP);
                 break;
             case SDL_SCANCODE_J:
-                shoot(currentLevel, V_DOWN);
+                Level_shoot(currentLevel, V_DOWN);
                 break;
             case SDL_SCANCODE_K:
-                shoot(currentLevel, V_LEFT);
+                Level_shoot(currentLevel, V_LEFT);
                 break;
             case SDL_SCANCODE_L:
-                shoot(currentLevel, V_RIGHT);
+                Level_shoot(currentLevel, V_RIGHT);
                 break;
             default:
                 break;
@@ -88,8 +88,9 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
     }
 
     if (levelToLoad != -1) {
-        SDL_free(currentLevel);
-        currentLevel = loadLevel(levelToLoad);
+        levelToLoad = levelToLoad%10;
+        Level_free(currentLevel);
+        currentLevel = Level_load(levelToLoad);
         if (currentLevel == NULL) return SDL_APP_SUCCESS;
     }
 
@@ -97,18 +98,18 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
 }
 
 SDL_AppResult SDL_AppIterate(void* appstate) {
-    SDL_SetRenderDrawColor(renderer, 0, isWon(currentLevel) ? 255 : 0, 0, SDL_ALPHA_OPAQUE);  /* black, full alpha */
+    SDL_SetRenderDrawColor(renderer, 0, Level_isWon(currentLevel) ? 255 : 0, 0, SDL_ALPHA_OPAQUE);  /* black, full alpha */
     SDL_RenderClear(renderer);  /* start with a blank canvas. */
 
     const Vec2 center = {WINDOW_WIDTH/2 - currentLevel->width*TILE_SIZE/2, WINDOW_HEIGHT/2 - currentLevel->height*TILE_SIZE/2};
-    drawLevel(renderer, currentLevel, center);
+    Level_draw(renderer, currentLevel, center);
 
     SDL_RenderPresent(renderer);
 
-    if (isWon(currentLevel)) {
+    if (Level_isWon(currentLevel)) {
         int nextLevel = currentLevel->levelNum + 1;
-        SDL_free(currentLevel);
-        currentLevel = loadLevel(nextLevel);
+        Level_free(currentLevel);
+        currentLevel = Level_load(nextLevel);
         if (currentLevel == NULL) return SDL_APP_SUCCESS;
     } 
 
@@ -117,6 +118,7 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
 
 /* This function runs once at shutdown. */
 void SDL_AppQuit(void* appstate, SDL_AppResult result) {
-    unloadLevelTextures();
+    if (currentLevel != NULL) Level_free(currentLevel);
+    Level_unloadTextures();
     /* SDL will clean up the window/renderer for us. */
 }

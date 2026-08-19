@@ -2,6 +2,7 @@
 #include "Vec2.h"
 
 #define TILE_SIZE 32
+#define MAX_CUBES 32
 
 typedef struct {
     int x;
@@ -9,23 +10,29 @@ typedef struct {
     int r;
 } Portal;
 
-#define MAX_CUBES 10
+typedef struct LevelState {
+    Vec2 playerLocation;
+    Vec2 cubes[MAX_CUBES];
+    Portal orangePortal;
+    Portal bluePortal;
+    struct LevelState* lastState;
+} LevelState;
+
 typedef struct {
     int levelNum;
     int tiles[32][32];
     int width;
     int height;
-    Vec2 playerLocation;
     int numCubes;
-    Vec2 cubes[10];
-    Portal orangePortal;
-    Portal bluePortal;
+    LevelState* state;
 } Level;
 
-bool loadLevelTextures(SDL_Renderer*);
-void unloadLevelTextures();
-Level* loadLevel(int);
-void drawLevel(SDL_Renderer*, Level*, Vec2);
-void move(Level*, Vec2);
-void shoot(Level*, Vec2);
-bool isWon(Level*);
+bool Level_loadTextures(SDL_Renderer*);
+void Level_unloadTextures();
+Level* Level_load(int);
+void Level_free(Level*);
+void Level_draw(SDL_Renderer*, Level*, Vec2);
+void Level_move(Level*, Vec2);
+void Level_undo(Level*);
+void Level_shoot(Level*, Vec2);
+bool Level_isWon(Level*);

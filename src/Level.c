@@ -1,8 +1,8 @@
 #include "Level.h"
 #include <SDL3/SDL.h>
 
-#define NUM_TX    7
-const char* texture_paths[] = {
+#define NUM_TX    9
+const char* Level_texturePaths[] = {
     NULL,
 #define TX_BUTTON 1
     "sprites/button.png",
@@ -15,43 +15,61 @@ const char* texture_paths[] = {
 #define TX_PWALL  5
     "sprites/pwall.png",
 #define TX_NPWALL 6
-    "sprites/npwall.png"
+    "sprites/npwall.png",
+#define TX_ORANGEPORTAL 7
+    "sprites/orangePortal.png",
+#define TX_BLUEPORTAL 8
+    "sprites/bluePortal.png"
 };
 
-static SDL_Texture* textures[NUM_TX] = {};
+static SDL_Texture* Level_textures[NUM_TX];
+static SDL_Texture* Level_numberTextures = NULL;
 
-bool loadLevelTextures(SDL_Renderer* renderer) {
-    SDL_Surface* surface = NULL;
+SDL_Texture* Level_loadTexture(SDL_Renderer* renderer, const char* path) {
     char* pngPath = NULL;
+    SDL_Surface* surface = NULL;
+    SDL_Texture* texture = NULL;
 
+    SDL_asprintf(&pngPath, "%s%s", SDL_GetBasePath(), path);
+    surface = SDL_LoadPNG(pngPath);
+    SDL_free(pngPath);
+
+    if (!surface) {
+        SDL_Log("Couldn't load png: %s", SDL_GetError());
+        return NULL;
+    }
+    
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+        SDL_Log("Couldn't create static texture: %s", SDL_GetError());
+        return NULL;
+    }
+
+    SDL_DestroySurface(surface);
+
+    return texture;
+}
+
+bool Level_loadTextures(SDL_Renderer* renderer) {
     // Skip first entry in texture_paths
     for (int i = 1; i < NUM_TX; i++) {
-        SDL_asprintf(&pngPath, "%s%s", SDL_GetBasePath(), texture_paths[i]);
-        surface = SDL_LoadPNG(pngPath);
-        if (!surface) {
-            SDL_Log("Couldn't load png: %s", SDL_GetError());
-            return false;
-        }
-
-        SDL_free(pngPath);
-
-        textures[i] = SDL_CreateTextureFromSurface(renderer, surface);
-        if (!textures[i]) {
-            SDL_Log("Couldn't create static texture: %s", SDL_GetError());
-            return false;
-        }
-
-        SDL_DestroySurface(surface);
+        Level_textures[i] = Level_loadTexture(renderer, Level_texturePaths[i]);
+        if (Level_textures[i] == NULL) return false;
     }
+
+    Level_numberTextures = Level_loadTexture(renderer, "sprites/numbers.png");
+    if (Level_numberTextures == NULL) return false;
 
     return true;
 }
 
-void unloadLevelTextures() {
-    for (int i = 0; i < NUM_TX; i++) SDL_DestroyTexture(textures[i]);
+void Level_unloadTextures() {
+    for (int i = 0; i < NUM_TX; i++)
+        if (Level_textures[i] != NULL) SDL_DestroyTexture(Level_textures[i]);
+    if (Level_numberTextures != NULL) SDL_DestroyTexture(Level_numberTextures);
 }
 
-Level* loadLevel(int num) {
+Level* Level_load(int num) {
     char* levelPath = NULL;
 
     SDL_asprintf(&levelPath, "%slevels/%d.txt", SDL_GetBasePath(), num);
@@ -62,6 +80,7 @@ Level* loadLevel(int num) {
         return NULL;
     }
     Level* newLevel = SDL_calloc(1, sizeof(Level));
+    newLevel->state = SDL_calloc(1, sizeof(LevelState));
     newLevel->levelNum = num;
 
     int x = 0, y = 0;
@@ -71,15 +90,22 @@ Level* loadLevel(int num) {
                 newLevel->tiles[y][x] = TX_BUTTON;
                 break;
             case 'c':
+                if (newLevel->numCubes >= MAX_CUBES) {
+                    SDL_Log("too many cubes!");
+                    Level_free(newLevel);
+                    SDL_free(mapData);
+                    return NULL;
+                }
                 newLevel->tiles[y][x] = TX_FLOOR;
-                newLevel->cubes[newLevel->numCubes].x = x;
-                newLevel->cubes[newLevel->numCubes].y = y;
+                newLevel->state->cubes[newLevel->numCubes].x = x;
+                newLevel->state->cubes[newLevel->numCubes].y = y;
                 newLevel->numCubes += 1;
                 break;
             case '>':
-                newLevel->playerLocation.x = x;
-                newLevel->playerLocation.y = y;
-                // fallthrough to floor case
+                newLevel->tiles[y][x] = TX_FLOOR;
+                newLevel->state->playerLocation.x = x;
+                newLevel->state->playerLocation.y = y;
+                break;
             case '.':
                 newLevel->tiles[y][x] = TX_FLOOR;
                 break;
@@ -98,7 +124,7 @@ Level* loadLevel(int num) {
                 break;
             default:
                 SDL_Log("Unknown character in map file at (%d, %d): %c", x, y, mapData[i]);
-                SDL_free(newLevel);
+                Level_free(newLevel);
                 SDL_free(mapData);
                 return NULL;
         }
@@ -112,34 +138,57 @@ Level* loadLevel(int num) {
     return newLevel;
 }
 
-void drawLevel(SDL_Renderer* renderer, Level* level, Vec2 offset) {
-    SDL_FRect dst_rect = {0, 0, TILE_SIZE, TILE_SIZE};
+void Level_freeState(LevelState* state) {
+    if (state->lastState != NULL) Level_freeState(state->lastState);
+    SDL_free(state);
+}
 
+void Level_free(Level* level) {
+    SDL_free(level->state);
+    SDL_free(level);
+}
+
+void Level_draw(SDL_Renderer* renderer, Level* level, Vec2 offset) {
+    SDL_FRect dst_rect = {0, 0, TILE_SIZE, TILE_SIZE};
+    SDL_FRect src_rect = {0, 0, TILE_SIZE, TILE_SIZE};
+
+    // Draw map
     for (int i = 0; i < level->height; i++) {
         for (int j = 0; j < level->width; j++) {
             int tile = level->tiles[i][j];
             if (tile > 0) {
                 dst_rect.x = j*TILE_SIZE + offset.x;
                 dst_rect.y = i*TILE_SIZE + offset.y;
-                SDL_RenderTexture(renderer, textures[tile], NULL, &dst_rect);
+                SDL_RenderTexture(renderer, Level_textures[tile], NULL, &dst_rect);
             }
         }
     }
 
+    // Draw cubes
     for (int i = 0; i < level->numCubes; i++) {
-        dst_rect.x = level->cubes[i].x*TILE_SIZE + offset.x;
-        dst_rect.y = level->cubes[i].y*TILE_SIZE + offset.y;
-        SDL_RenderTexture(renderer, textures[TX_CUBE], NULL, &dst_rect);
+        dst_rect.x = level->state->cubes[i].x*TILE_SIZE + offset.x;
+        dst_rect.y = level->state->cubes[i].y*TILE_SIZE + offset.y;
+        SDL_RenderTexture(renderer, Level_textures[TX_CUBE], NULL, &dst_rect);
     }
 
-    dst_rect.x = level->playerLocation.x*TILE_SIZE + offset.x;
-    dst_rect.y = level->playerLocation.y*TILE_SIZE + offset.y;
-    SDL_RenderTexture(renderer, textures[TX_PLAYER], NULL, &dst_rect);
+    // Draw player
+    dst_rect.x = level->state->playerLocation.x*TILE_SIZE + offset.x;
+    dst_rect.y = level->state->playerLocation.y*TILE_SIZE + offset.y;
+    SDL_RenderTexture(renderer, Level_textures[TX_PLAYER], NULL, &dst_rect);
+
+    // Draw level number
+    dst_rect.y = 0;
+    dst_rect.x = 0;
+    src_rect.x = (level->levelNum/10)*TILE_SIZE;
+    SDL_RenderTexture(renderer, Level_numberTextures, &src_rect, &dst_rect);
+    dst_rect.x = TILE_SIZE;
+    src_rect.x = (level->levelNum%10)*TILE_SIZE;
+    SDL_RenderTexture(renderer, Level_numberTextures, &src_rect, &dst_rect);
 }
 
-int isCube(Level* level, Vec2 pos) {
+int Level_isCube(Level* level, Vec2 pos) {
     for (int i = 0; i < level->numCubes; i++) {
-        if (level->cubes[i].x == pos.x && level->cubes[i].y == pos.y) {
+        if (level->state->cubes[i].x == pos.x && level->state->cubes[i].y == pos.y) {
             return i;
         }
     }
@@ -147,8 +196,8 @@ int isCube(Level* level, Vec2 pos) {
     return -1;
 }
 
-bool canMove(Level* level, Vec2 pos, Vec2 dir) {
-    if (isCube(level, pos) > -1) return canMove(level, (Vec2){pos.x + dir.x, pos.y + dir.y}, dir);
+bool Level_canMove(Level* level, Vec2 pos, Vec2 dir) {
+    if (Level_isCube(level, pos) > -1) return Level_canMove(level, (Vec2){pos.x + dir.x, pos.y + dir.y}, dir);
 
     switch (level->tiles[pos.y][pos.x]) {
         case TX_PWALL:
@@ -159,30 +208,30 @@ bool canMove(Level* level, Vec2 pos, Vec2 dir) {
     }
 }
 
-void moveCube(Level* level, int cubeId, Vec2 dir) {
-    Vec2 targetPos = {level->cubes[cubeId].x + dir.x, level->cubes[cubeId].y + dir.y};
-    int nextCubeId = isCube(level, targetPos);
-    if (nextCubeId > -1) moveCube(level, nextCubeId, dir);
-    level->cubes[cubeId] = targetPos;
+void Level_moveCube(Level* level, int cubeId, Vec2 dir) {
+    Vec2 targetPos = {level->state->cubes[cubeId].x + dir.x, level->state->cubes[cubeId].y + dir.y};
+    int nextCubeId = Level_isCube(level, targetPos);
+    if (nextCubeId > -1) Level_moveCube(level, nextCubeId, dir);
+    level->state->cubes[cubeId] = targetPos;
 }
 
-void move(Level* level, Vec2 dir) {
-    Vec2 newPos = {level->playerLocation.x + dir.x, level->playerLocation.y + dir.y};
-    if (canMove(level, newPos, dir)) {
-        int cubeId = isCube(level, newPos);
-        if (cubeId > -1) moveCube(level, cubeId, dir);
-        level->playerLocation = newPos;
+void Level_move(Level* level, Vec2 dir) {
+    Vec2 newPos = {level->state->playerLocation.x + dir.x, level->state->playerLocation.y + dir.y};
+    if (Level_canMove(level, newPos, dir)) {
+        int cubeId = Level_isCube(level, newPos);
+        if (cubeId > -1) Level_moveCube(level, cubeId, dir);
+        level->state->playerLocation = newPos;
     }
 }
 
-void shoot(Level* level, Vec2 dir) {
+void Level_shoot(Level* level, Vec2 dir) {
     
 }
 
-bool isWon(Level* level) {
+bool Level_isWon(Level* level) {
     for (int i = 0; i < level->height; i++) {
         for (int j = 0; j < level->width; j++) {
-            if (level->tiles[i][j] == TX_BUTTON && isCube(level, (Vec2){j, i}) == -1) return false;
+            if (level->tiles[i][j] == TX_BUTTON && Level_isCube(level, (Vec2){j, i}) == -1) return false;
         }
     }
 
