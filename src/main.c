@@ -82,6 +82,9 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
             case SDLK_PERIOD:
                 levelToLoad = currentLevel->levelNum + 1;
                 break;
+            case SDLK_U:
+                Level_undo(currentLevel);
+                break;
             default:
                 break;
         }

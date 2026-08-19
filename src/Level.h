@@ -11,6 +11,7 @@ typedef struct {
 } Portal;
 
 typedef struct LevelState {
+    int moves;
     Vec2 playerLocation;
     Vec2 cubes[MAX_CUBES];
     Portal orangePortal;
@@ -33,6 +34,6 @@ Level* Level_load(int);
 void Level_free(Level*);
 void Level_draw(SDL_Renderer*, Level*, Vec2);
 void Level_move(Level*, Vec2);
-void Level_undo(Level*);
 void Level_shoot(Level*, Vec2);
+void Level_undo(Level*);
 bool Level_isWon(Level*);

@@ -1,7 +1,6 @@
 #include "Level.h"
 #include <SDL3/SDL.h>
 
-#define NUM_TX    9
 const char* Level_texturePaths[] = {
     NULL,
 #define TX_BUTTON 1
@@ -19,8 +18,13 @@ const char* Level_texturePaths[] = {
 #define TX_ORANGEPORTAL 7
     "sprites/orangePortal.png",
 #define TX_BLUEPORTAL 8
-    "sprites/bluePortal.png"
+    "sprites/bluePortal.png",
+#define TX_LEVEL 9
+    "sprites/level.png",
+#define TX_MOVES 10
+    "sprites/moves.png"
 };
+#define NUM_TX    11
 
 static SDL_Texture* Level_textures[NUM_TX];
 static SDL_Texture* Level_numberTextures = NULL;
@@ -148,9 +152,21 @@ void Level_free(Level* level) {
     SDL_free(level);
 }
 
-void Level_draw(SDL_Renderer* renderer, Level* level, Vec2 offset) {
-    SDL_FRect dst_rect = {0, 0, TILE_SIZE, TILE_SIZE};
+void Level_drawNumber(SDL_Renderer* renderer, int num, int minDigits, Vec2 pos) {
     SDL_FRect src_rect = {0, 0, TILE_SIZE, TILE_SIZE};
+    SDL_FRect dst_rect = {0, pos.y, TILE_SIZE, TILE_SIZE};
+
+    int digits = SDL_max(minDigits, SDL_log10(num) + 1);
+    for (int d = 0; d < digits; d++) {
+        dst_rect.x = pos.x + (digits - (d + 1))*TILE_SIZE;
+        src_rect.x = (num/(int)SDL_pow(10, d)%10)*TILE_SIZE;
+        SDL_RenderTexture(renderer, Level_numberTextures, &src_rect, &dst_rect);
+    }
+}
+
+void Level_draw(SDL_Renderer* renderer, Level* level, Vec2 offset) {
+    SDL_FRect src_rect = {0, 0, TILE_SIZE, TILE_SIZE};
+    SDL_FRect dst_rect = {0, 0, TILE_SIZE, TILE_SIZE};
 
     // Draw map
     for (int i = 0; i < level->height; i++) {
@@ -177,13 +193,18 @@ void Level_draw(SDL_Renderer* renderer, Level* level, Vec2 offset) {
     SDL_RenderTexture(renderer, Level_textures[TX_PLAYER], NULL, &dst_rect);
 
     // Draw level number
-    dst_rect.y = 0;
     dst_rect.x = 0;
-    src_rect.x = (level->levelNum/10)*TILE_SIZE;
-    SDL_RenderTexture(renderer, Level_numberTextures, &src_rect, &dst_rect);
-    dst_rect.x = TILE_SIZE;
-    src_rect.x = (level->levelNum%10)*TILE_SIZE;
-    SDL_RenderTexture(renderer, Level_numberTextures, &src_rect, &dst_rect);
+    dst_rect.y = 0;
+    dst_rect.w = Level_textures[TX_LEVEL]->w;
+    SDL_RenderTexture(renderer, Level_textures[TX_LEVEL], NULL, &dst_rect);
+    Level_drawNumber(renderer, level->levelNum, 2, (Vec2){Level_textures[TX_LEVEL]->w, 0});
+
+    // Draw move counter
+    dst_rect.x = 0;
+    dst_rect.y = Level_textures[TX_LEVEL]->h;
+    dst_rect.w = Level_textures[TX_MOVES]->w;
+    SDL_RenderTexture(renderer, Level_textures[TX_MOVES], NULL, &dst_rect);
+    Level_drawNumber(renderer, level->state->moves, 2, (Vec2){Level_textures[TX_MOVES]->w, Level_textures[TX_LEVEL]->h});
 }
 
 int Level_isCube(Level* level, Vec2 pos) {
@@ -208,6 +229,14 @@ bool Level_canMove(Level* level, Vec2 pos, Vec2 dir) {
     }
 }
 
+void Level_newState(Level* level) {
+    LevelState* newState = SDL_malloc(sizeof(LevelState));
+    SDL_memcpy(newState, level->state, sizeof(LevelState));
+    newState->lastState = level->state;
+    level->state = newState;
+    level->state->moves++;
+}
+
 void Level_moveCube(Level* level, int cubeId, Vec2 dir) {
     Vec2 targetPos = {level->state->cubes[cubeId].x + dir.x, level->state->cubes[cubeId].y + dir.y};
     int nextCubeId = Level_isCube(level, targetPos);
@@ -218,6 +247,7 @@ void Level_moveCube(Level* level, int cubeId, Vec2 dir) {
 void Level_move(Level* level, Vec2 dir) {
     Vec2 newPos = {level->state->playerLocation.x + dir.x, level->state->playerLocation.y + dir.y};
     if (Level_canMove(level, newPos, dir)) {
+        Level_newState(level);
         int cubeId = Level_isCube(level, newPos);
         if (cubeId > -1) Level_moveCube(level, cubeId, dir);
         level->state->playerLocation = newPos;
@@ -225,7 +255,15 @@ void Level_move(Level* level, Vec2 dir) {
 }
 
 void Level_shoot(Level* level, Vec2 dir) {
-    
+    Level_newState(level);
+}
+
+void Level_undo(Level* level) {
+    if (level->state->lastState != NULL) {
+        LevelState* tmp = level->state;
+        level->state = level->state->lastState;
+        SDL_free(tmp);
+    }
 }
 
 bool Level_isWon(Level* level) {
