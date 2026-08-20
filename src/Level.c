@@ -1,27 +1,26 @@
 #include "Level.h"
-#include <SDL3/SDL.h>
 
 const char* Level_texturePaths[] = {
     NULL,
-#define TX_BUTTON 1
+#define L_BUTTON 1
     "sprites/button.png",
-#define TX_CUBE   2
+#define L_CUBE   2
     "sprites/cube.png",
-#define TX_PLAYER 3
+#define L_PLAYER 3
     "sprites/bendy.png",
-#define TX_FLOOR  4
+#define L_FLOOR  4
     "sprites/floor.png",
-#define TX_PWALL  5
+#define L_PWALL  5
     "sprites/pwall.png",
-#define TX_NPWALL 6
+#define L_NPWALL 6
     "sprites/npwall.png",
-#define TX_ORANGEPORTAL 7
+#define L_ORANGEPORTAL 7
     "sprites/orangePortal.png",
-#define TX_BLUEPORTAL 8
+#define L_BLUEPORTAL 8
     "sprites/bluePortal.png",
-#define TX_LEVEL 9
+#define L_LEVEL 9
     "sprites/level.png",
-#define TX_MOVES 10
+#define L_MOVES 10
     "sprites/moves.png"
 };
 #define NUM_TX    11
@@ -91,7 +90,7 @@ Level* Level_load(int num) {
     for (int i = 0; mapData[i] != 0; i++) {
         switch (mapData[i]) {
             case '?':
-                newLevel->tiles[y][x] = TX_BUTTON;
+                newLevel->tiles[y][x] = L_BUTTON;
                 break;
             case 'c':
                 if (newLevel->numCubes >= MAX_CUBES) {
@@ -100,24 +99,24 @@ Level* Level_load(int num) {
                     SDL_free(mapData);
                     return NULL;
                 }
-                newLevel->tiles[y][x] = TX_FLOOR;
+                newLevel->tiles[y][x] = L_FLOOR;
                 newLevel->state->cubes[newLevel->numCubes].x = x;
                 newLevel->state->cubes[newLevel->numCubes].y = y;
                 newLevel->numCubes += 1;
                 break;
             case '>':
-                newLevel->tiles[y][x] = TX_FLOOR;
+                newLevel->tiles[y][x] = L_FLOOR;
                 newLevel->state->playerLocation.x = x;
                 newLevel->state->playerLocation.y = y;
                 break;
             case '.':
-                newLevel->tiles[y][x] = TX_FLOOR;
+                newLevel->tiles[y][x] = L_FLOOR;
                 break;
             case '#':
-                newLevel->tiles[y][x] = TX_PWALL;
+                newLevel->tiles[y][x] = L_PWALL;
                 break;
             case '@':
-                newLevel->tiles[y][x] = TX_NPWALL;
+                newLevel->tiles[y][x] = L_NPWALL;
                 break;
             case '\n':
                 newLevel->width = SDL_max(newLevel->width, x);
@@ -152,8 +151,8 @@ void Level_free(Level* level) {
     SDL_free(level);
 }
 
-void Level_drawNumber(SDL_Renderer* renderer, int num, int minDigits, Vec2 pos, Uint64 time) {
-    SDL_FRect src_rect = {0, TILE_SIZE*((time/500)%(Level_numbersTexture->h/TILE_SIZE)), TILE_SIZE, TILE_SIZE};
+void Level_drawNumber(SDL_Renderer* renderer, int num, int minDigits, Vec2 pos) {
+    SDL_FRect src_rect = {0, TILE_SIZE*((SDL_GetTicks()/500)%(Level_numbersTexture->h/TILE_SIZE)), TILE_SIZE, TILE_SIZE};
     SDL_FRect dst_rect = {0, pos.y, TILE_SIZE, TILE_SIZE};
 
     int digits = SDL_max(minDigits, SDL_log10(num) + 1);
@@ -164,7 +163,7 @@ void Level_drawNumber(SDL_Renderer* renderer, int num, int minDigits, Vec2 pos, 
     }
 }
 
-void Level_draw(SDL_Renderer* renderer, Level* level, Vec2 offset, Uint64 time) {
+void Level_draw(SDL_Renderer* renderer, Level* level, Vec2 offset) {
     SDL_FRect src_rect = {0, 0, TILE_SIZE, TILE_SIZE};
     SDL_FRect dst_rect = {0, 0, TILE_SIZE, TILE_SIZE};
 
@@ -184,27 +183,47 @@ void Level_draw(SDL_Renderer* renderer, Level* level, Vec2 offset, Uint64 time) 
     for (int i = 0; i < level->numCubes; i++) {
         dst_rect.x = level->state->cubes[i].x*TILE_SIZE + offset.x;
         dst_rect.y = level->state->cubes[i].y*TILE_SIZE + offset.y;
-        SDL_RenderTexture(renderer, Level_textures[TX_CUBE], NULL, &dst_rect);
+        SDL_RenderTexture(renderer, Level_textures[L_CUBE], NULL, &dst_rect);
+    }
+
+    // Draw portals
+    if (level->state->bluePortal.exists) {
+        dst_rect.x = level->state->bluePortal.pos.x*TILE_SIZE + offset.x;
+        dst_rect.y = level->state->bluePortal.pos.y*TILE_SIZE + offset.y;
+        SDL_RenderTextureRotated(renderer, Level_textures[L_BLUEPORTAL], NULL, &dst_rect, level->state->bluePortal.r*90, NULL, SDL_FLIP_NONE);
+    }
+    if (level->state->orangePortal.exists) {
+        dst_rect.x = level->state->orangePortal.pos.x*TILE_SIZE + offset.x;
+        dst_rect.y = level->state->orangePortal.pos.y*TILE_SIZE + offset.y;
+        SDL_RenderTextureRotated(renderer, Level_textures[L_ORANGEPORTAL], NULL, &dst_rect, level->state->orangePortal.r*90, NULL, SDL_FLIP_NONE);
     }
 
     // Draw player
     dst_rect.x = level->state->playerLocation.x*TILE_SIZE + offset.x;
     dst_rect.y = level->state->playerLocation.y*TILE_SIZE + offset.y;
-    SDL_RenderTexture(renderer, Level_textures[TX_PLAYER], NULL, &dst_rect);
+    SDL_RenderTexture(renderer, Level_textures[L_PLAYER], NULL, &dst_rect);
 
     // Draw level number
     dst_rect.x = 0;
     dst_rect.y = 0;
-    dst_rect.w = Level_textures[TX_LEVEL]->w;
-    SDL_RenderTexture(renderer, Level_textures[TX_LEVEL], NULL, &dst_rect);
-    Level_drawNumber(renderer, level->levelNum, 2, (Vec2){Level_textures[TX_LEVEL]->w, 0}, time);
+    dst_rect.w = Level_textures[L_LEVEL]->w;
+    SDL_RenderTexture(renderer, Level_textures[L_LEVEL], NULL, &dst_rect);
+    Level_drawNumber(renderer, level->levelNum, 2, (Vec2){Level_textures[L_LEVEL]->w, 0});
 
     // Draw move counter
     dst_rect.x = 0;
-    dst_rect.y = Level_textures[TX_LEVEL]->h;
-    dst_rect.w = Level_textures[TX_MOVES]->w;
-    SDL_RenderTexture(renderer, Level_textures[TX_MOVES], NULL, &dst_rect);
-    Level_drawNumber(renderer, level->state->moves, 2, (Vec2){Level_textures[TX_MOVES]->w, Level_textures[TX_LEVEL]->h}, time);
+    dst_rect.y = Level_textures[L_LEVEL]->h;
+    dst_rect.w = Level_textures[L_MOVES]->w;
+    SDL_RenderTexture(renderer, Level_textures[L_MOVES], NULL, &dst_rect);
+    Level_drawNumber(renderer, level->state->moves, 2, (Vec2){Level_textures[L_MOVES]->w, Level_textures[L_LEVEL]->h});
+}
+
+void Level_newState(Level* level) {
+    LevelState* newState = SDL_malloc(sizeof(LevelState));
+    SDL_memcpy(newState, level->state, sizeof(LevelState));
+    newState->lastState = level->state;
+    level->state = newState;
+    level->state->moves++;
 }
 
 int Level_isCube(Level* level, Vec2 pos) {
@@ -217,24 +236,28 @@ int Level_isCube(Level* level, Vec2 pos) {
     return -1;
 }
 
-bool Level_canMove(Level* level, Vec2 pos, Vec2 dir) {
-    if (Level_isCube(level, pos) > -1) return Level_canMove(level, (Vec2){pos.x + dir.x, pos.y + dir.y}, dir);
+bool Level_isPassable(Level* level, Vec2 pos) {
+    if (Level_isCube(level, pos) > -1) return true;
 
     switch (level->tiles[pos.y][pos.x]) {
-        case TX_PWALL:
-        case TX_NPWALL:
+        case L_PWALL:
+        case L_NPWALL:
             return false;
         default:
             return true;
     }
 }
 
-void Level_newState(Level* level) {
-    LevelState* newState = SDL_malloc(sizeof(LevelState));
-    SDL_memcpy(newState, level->state, sizeof(LevelState));
-    newState->lastState = level->state;
-    level->state = newState;
-    level->state->moves++;
+bool Level_canMove(Level* level, Vec2 pos, Vec2 dir) {
+    if (Level_isCube(level, pos) > -1) return Level_canMove(level, Vec2_add(pos, dir), dir);
+
+    switch (level->tiles[pos.y][pos.x]) {
+        case L_PWALL:
+        case L_NPWALL:
+            return false;
+        default:
+            return true;
+    }
 }
 
 void Level_moveCube(Level* level, int cubeId, Vec2 dir) {
@@ -255,7 +278,26 @@ void Level_move(Level* level, Vec2 dir) {
 }
 
 void Level_shoot(Level* level, Vec2 dir) {
-    Level_newState(level);
+    Vec2 pos = level->state->playerLocation;
+    while (true) {
+        if (Level_isPassable(level, pos)) {
+            pos = Vec2_add(pos, dir);
+        } else {
+            switch (level->tiles[pos.y][pos.x]) {
+                case L_PWALL:
+                    Level_newState(level);
+                    Portal* newPortal = (level->state->lastShotBlue) ? &level->state->orangePortal : &level->state->bluePortal;
+                    level->state->lastShotBlue = !level->state->lastShotBlue;
+                    newPortal->exists = true;
+                    newPortal->pos = pos;
+                    if (Vec2_equal(dir, V_UP)) newPortal->r = 2;
+                    else if (Vec2_equal(dir, V_DOWN)) newPortal->r = 0;
+                    else if (Vec2_equal(dir, V_LEFT)) newPortal->r = 1;
+                    else if (Vec2_equal(dir, V_RIGHT)) newPortal->r = 3;
+            }
+            break;
+        }
+    }
 }
 
 void Level_undo(Level* level) {
@@ -269,7 +311,7 @@ void Level_undo(Level* level) {
 bool Level_isWon(Level* level) {
     for (int i = 0; i < level->height; i++) {
         for (int j = 0; j < level->width; j++) {
-            if (level->tiles[i][j] == TX_BUTTON && Level_isCube(level, (Vec2){j, i}) == -1) return false;
+            if (level->tiles[i][j] == L_BUTTON && Level_isCube(level, (Vec2){j, i}) == -1) return false;
         }
     }
 

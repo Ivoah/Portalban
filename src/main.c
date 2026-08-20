@@ -42,6 +42,8 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
         return SDL_APP_SUCCESS;
     } else if (event->type == SDL_EVENT_KEY_DOWN) {
         switch (event->key.scancode) {
+            case SDL_SCANCODE_ESCAPE:
+                return SDL_APP_SUCCESS;
             case SDL_SCANCODE_UP:
             case SDL_SCANCODE_W:
                 Level_move(currentLevel, V_UP);
@@ -61,10 +63,10 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
             case SDL_SCANCODE_I:
                 Level_shoot(currentLevel, V_UP);
                 break;
-            case SDL_SCANCODE_J:
+            case SDL_SCANCODE_K:
                 Level_shoot(currentLevel, V_DOWN);
                 break;
-            case SDL_SCANCODE_K:
+            case SDL_SCANCODE_J:
                 Level_shoot(currentLevel, V_LEFT);
                 break;
             case SDL_SCANCODE_L:
@@ -74,8 +76,6 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
                 break;
         }
         switch (event->key.key) {
-            case SDLK_Q:
-                return SDL_APP_SUCCESS;
             case SDLK_R:
                 levelToLoad = currentLevel->levelNum;
                 break;
@@ -115,8 +115,8 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
 
     // Draw level
     const Vec2 center = {WINDOW_WIDTH/2 - currentLevel->width*TILE_SIZE/2, WINDOW_HEIGHT/2 - currentLevel->height*TILE_SIZE/2};
-    Level_draw(renderer, currentLevel, center, currentTime);
-    Level_drawNumber(renderer, 1000/delta, 3, (Vec2){WINDOW_WIDTH - TILE_SIZE*3, 0}, currentTime);
+    Level_draw(renderer, currentLevel, center);
+    // Level_drawNumber(renderer, 1000/delta, 3, (Vec2){WINDOW_WIDTH - TILE_SIZE*3, 0});
 
     SDL_RenderPresent(renderer);
 
