@@ -25,6 +25,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char* argv[]) {
         return SDL_APP_FAILURE;
     }
     SDL_SetRenderLogicalPresentation(renderer, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+    if (!SDL_SetRenderVSync(renderer, 1)) SDL_Log("Could not set vsync: %s", SDL_GetError());
 
     if (!Level_loadTextures(renderer)) return SDL_APP_FAILURE;
 
@@ -73,6 +74,8 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
                 break;
         }
         switch (event->key.key) {
+            case SDLK_Q:
+                return SDL_APP_SUCCESS;
             case SDLK_R:
                 levelToLoad = currentLevel->levelNum;
                 break;
@@ -100,15 +103,24 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
     return SDL_APP_CONTINUE;
 }
 
+Uint64 lastTime = 0, currentTime = 0;
 SDL_AppResult SDL_AppIterate(void* appstate) {
-    SDL_SetRenderDrawColor(renderer, 0, Level_isWon(currentLevel) ? 255 : 0, 0, SDL_ALPHA_OPAQUE);  /* black, full alpha */
-    SDL_RenderClear(renderer);  /* start with a blank canvas. */
+    currentTime = SDL_GetTicks();
+    Uint64 delta = currentTime - lastTime;
+    lastTime = currentTime;
 
+    // Clear screen
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+    SDL_RenderClear(renderer);
+
+    // Draw level
     const Vec2 center = {WINDOW_WIDTH/2 - currentLevel->width*TILE_SIZE/2, WINDOW_HEIGHT/2 - currentLevel->height*TILE_SIZE/2};
-    Level_draw(renderer, currentLevel, center);
+    Level_draw(renderer, currentLevel, center, currentTime);
+    Level_drawNumber(renderer, 1000/delta, 3, (Vec2){WINDOW_WIDTH - TILE_SIZE*3, 0}, currentTime);
 
     SDL_RenderPresent(renderer);
 
+    // Advance level if won
     if (Level_isWon(currentLevel)) {
         int nextLevel = currentLevel->levelNum + 1;
         Level_free(currentLevel);

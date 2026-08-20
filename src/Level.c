@@ -27,7 +27,7 @@ const char* Level_texturePaths[] = {
 #define NUM_TX    11
 
 static SDL_Texture* Level_textures[NUM_TX];
-static SDL_Texture* Level_numberTextures = NULL;
+static SDL_Texture* Level_numbersTexture = NULL;
 
 SDL_Texture* Level_loadTexture(SDL_Renderer* renderer, const char* path) {
     char* pngPath = NULL;
@@ -61,8 +61,8 @@ bool Level_loadTextures(SDL_Renderer* renderer) {
         if (Level_textures[i] == NULL) return false;
     }
 
-    Level_numberTextures = Level_loadTexture(renderer, "sprites/numbers.png");
-    if (Level_numberTextures == NULL) return false;
+    Level_numbersTexture = Level_loadTexture(renderer, "sprites/numbers.png");
+    if (Level_numbersTexture == NULL) return false;
 
     return true;
 }
@@ -70,7 +70,7 @@ bool Level_loadTextures(SDL_Renderer* renderer) {
 void Level_unloadTextures() {
     for (int i = 0; i < NUM_TX; i++)
         if (Level_textures[i] != NULL) SDL_DestroyTexture(Level_textures[i]);
-    if (Level_numberTextures != NULL) SDL_DestroyTexture(Level_numberTextures);
+    if (Level_numbersTexture != NULL) SDL_DestroyTexture(Level_numbersTexture);
 }
 
 Level* Level_load(int num) {
@@ -152,19 +152,19 @@ void Level_free(Level* level) {
     SDL_free(level);
 }
 
-void Level_drawNumber(SDL_Renderer* renderer, int num, int minDigits, Vec2 pos) {
-    SDL_FRect src_rect = {0, 0, TILE_SIZE, TILE_SIZE};
+void Level_drawNumber(SDL_Renderer* renderer, int num, int minDigits, Vec2 pos, Uint64 time) {
+    SDL_FRect src_rect = {0, TILE_SIZE*((time/500)%(Level_numbersTexture->h/TILE_SIZE)), TILE_SIZE, TILE_SIZE};
     SDL_FRect dst_rect = {0, pos.y, TILE_SIZE, TILE_SIZE};
 
     int digits = SDL_max(minDigits, SDL_log10(num) + 1);
     for (int d = 0; d < digits; d++) {
         dst_rect.x = pos.x + (digits - (d + 1))*TILE_SIZE;
         src_rect.x = (num/(int)SDL_pow(10, d)%10)*TILE_SIZE;
-        SDL_RenderTexture(renderer, Level_numberTextures, &src_rect, &dst_rect);
+        SDL_RenderTexture(renderer, Level_numbersTexture, &src_rect, &dst_rect);
     }
 }
 
-void Level_draw(SDL_Renderer* renderer, Level* level, Vec2 offset) {
+void Level_draw(SDL_Renderer* renderer, Level* level, Vec2 offset, Uint64 time) {
     SDL_FRect src_rect = {0, 0, TILE_SIZE, TILE_SIZE};
     SDL_FRect dst_rect = {0, 0, TILE_SIZE, TILE_SIZE};
 
@@ -197,14 +197,14 @@ void Level_draw(SDL_Renderer* renderer, Level* level, Vec2 offset) {
     dst_rect.y = 0;
     dst_rect.w = Level_textures[TX_LEVEL]->w;
     SDL_RenderTexture(renderer, Level_textures[TX_LEVEL], NULL, &dst_rect);
-    Level_drawNumber(renderer, level->levelNum, 2, (Vec2){Level_textures[TX_LEVEL]->w, 0});
+    Level_drawNumber(renderer, level->levelNum, 2, (Vec2){Level_textures[TX_LEVEL]->w, 0}, time);
 
     // Draw move counter
     dst_rect.x = 0;
     dst_rect.y = Level_textures[TX_LEVEL]->h;
     dst_rect.w = Level_textures[TX_MOVES]->w;
     SDL_RenderTexture(renderer, Level_textures[TX_MOVES], NULL, &dst_rect);
-    Level_drawNumber(renderer, level->state->moves, 2, (Vec2){Level_textures[TX_MOVES]->w, Level_textures[TX_LEVEL]->h});
+    Level_drawNumber(renderer, level->state->moves, 2, (Vec2){Level_textures[TX_MOVES]->w, Level_textures[TX_LEVEL]->h}, time);
 }
 
 int Level_isCube(Level* level, Vec2 pos) {
