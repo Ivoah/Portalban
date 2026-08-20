@@ -12,3 +12,6 @@ const Vec2 V_RIGHT;
 
 Vec2 Vec2_add(const Vec2*, const Vec2*);
 bool Vec2_equal(const Vec2*, const Vec2*);
+int Vec2_toR(const Vec2*);
+Vec2 Vec2_fromR(int);
+Vec2 Vec2_180(const Vec2*);

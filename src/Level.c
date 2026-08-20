@@ -251,11 +251,26 @@ bool Level_isPassable(Level* level, Vec2 pos) {
     }
 }
 
-bool Level_canMove(Level* level, Vec2 pos, Vec2 dir) {
-    Vec2 newPos = Vec2_add(&pos, &dir);
-    if (Level_isCube(level, newPos) > -1) return Level_canMove(level, newPos, dir);
+void Level_moveThroughPortals(Level* level, Vec2* pos, Vec2* dir) {
+    *pos = Vec2_add(pos, dir);
+    if (level->state->bluePortal.exists && level->state->orangePortal.exists) {
+        if (Vec2_equal(pos, &level->state->bluePortal.pos) && Vec2_toR(dir) == level->state->bluePortal.r) {
+            *dir = Vec2_fromR(level->state->orangePortal.r);
+            *dir = Vec2_180(dir);
+            *pos = Vec2_add(&level->state->orangePortal.pos, dir);
+        } else if (Vec2_equal(pos, &level->state->orangePortal.pos) && Vec2_toR(dir) == level->state->orangePortal.r) {
+            *dir = Vec2_fromR(level->state->bluePortal.r);
+            *dir = Vec2_180(dir);
+            *pos = Vec2_add(&level->state->bluePortal.pos, dir);
+        }
+    }
+}
 
-    switch (level->tiles[newPos.y][newPos.x]) {
+bool Level_canMove(Level* level, Vec2 pos, Vec2 dir) {
+    Level_moveThroughPortals(level, &pos, &dir);
+    if (Level_isCube(level, pos) > -1) return Level_canMove(level, pos, dir);
+
+    switch (level->tiles[pos.y][pos.x]) {
         case L_PWALL:
         case L_NPWALL:
             return false;
@@ -265,10 +280,11 @@ bool Level_canMove(Level* level, Vec2 pos, Vec2 dir) {
 }
 
 void Level_moveEntity(Level* level, Vec2* ent, Vec2 dir) {
-    Vec2 targetPos = Vec2_add(ent, &dir);
-    int nextCubeId = Level_isCube(level, targetPos);
+    Vec2 newPos = *ent;
+    Level_moveThroughPortals(level, &newPos, &dir);
+    int nextCubeId = Level_isCube(level, newPos);
     if (nextCubeId > -1) Level_moveEntity(level, &level->state->cubes[nextCubeId], dir);
-    *ent = targetPos;
+    *ent = newPos;
 }
 
 void Level_move(Level* level, Vec2 dir) {
@@ -291,10 +307,7 @@ void Level_shoot(Level* level, Vec2 dir) {
                     level->state->lastShotBlue = !level->state->lastShotBlue;
                     newPortal->exists = true;
                     newPortal->pos = pos;
-                    if (Vec2_equal(&dir, &V_UP)) newPortal->r = 2;
-                    else if (Vec2_equal(&dir, &V_DOWN)) newPortal->r = 0;
-                    else if (Vec2_equal(&dir, &V_LEFT)) newPortal->r = 1;
-                    else if (Vec2_equal(&dir, &V_RIGHT)) newPortal->r = 3;
+                    newPortal->r = Vec2_toR(&dir);
             }
             break;
         }
