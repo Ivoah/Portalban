@@ -252,9 +252,10 @@ bool Level_isPassable(Level* level, Vec2 pos) {
 }
 
 bool Level_canMove(Level* level, Vec2 pos, Vec2 dir) {
-    if (Level_isCube(level, pos) > -1) return Level_canMove(level, Vec2_add(pos, dir), dir);
+    Vec2 newPos = Vec2_add(&pos, &dir);
+    if (Level_isCube(level, newPos) > -1) return Level_canMove(level, newPos, dir);
 
-    switch (level->tiles[pos.y][pos.x]) {
+    switch (level->tiles[newPos.y][newPos.x]) {
         case L_PWALL:
         case L_NPWALL:
             return false;
@@ -263,20 +264,17 @@ bool Level_canMove(Level* level, Vec2 pos, Vec2 dir) {
     }
 }
 
-void Level_moveCube(Level* level, int cubeId, Vec2 dir) {
-    Vec2 targetPos = {level->state->cubes[cubeId].x + dir.x, level->state->cubes[cubeId].y + dir.y};
+void Level_moveEntity(Level* level, Vec2* ent, Vec2 dir) {
+    Vec2 targetPos = Vec2_add(ent, &dir);
     int nextCubeId = Level_isCube(level, targetPos);
-    if (nextCubeId > -1) Level_moveCube(level, nextCubeId, dir);
-    level->state->cubes[cubeId] = targetPos;
+    if (nextCubeId > -1) Level_moveEntity(level, &level->state->cubes[nextCubeId], dir);
+    *ent = targetPos;
 }
 
 void Level_move(Level* level, Vec2 dir) {
-    Vec2 newPos = {level->state->playerLocation.x + dir.x, level->state->playerLocation.y + dir.y};
-    if (Level_canMove(level, newPos, dir)) {
+    if (Level_canMove(level, level->state->playerLocation, dir)) {
         Level_newState(level);
-        int cubeId = Level_isCube(level, newPos);
-        if (cubeId > -1) Level_moveCube(level, cubeId, dir);
-        level->state->playerLocation = newPos;
+        Level_moveEntity(level, &level->state->playerLocation, dir);
     }
 }
 
@@ -284,7 +282,7 @@ void Level_shoot(Level* level, Vec2 dir) {
     Vec2 pos = level->state->playerLocation;
     while (true) {
         if (Level_isPassable(level, pos)) {
-            pos = Vec2_add(pos, dir);
+            pos = Vec2_add(&pos, &dir);
         } else {
             switch (level->tiles[pos.y][pos.x]) {
                 case L_PWALL:
@@ -293,10 +291,10 @@ void Level_shoot(Level* level, Vec2 dir) {
                     level->state->lastShotBlue = !level->state->lastShotBlue;
                     newPortal->exists = true;
                     newPortal->pos = pos;
-                    if (Vec2_equal(dir, V_UP)) newPortal->r = 2;
-                    else if (Vec2_equal(dir, V_DOWN)) newPortal->r = 0;
-                    else if (Vec2_equal(dir, V_LEFT)) newPortal->r = 1;
-                    else if (Vec2_equal(dir, V_RIGHT)) newPortal->r = 3;
+                    if (Vec2_equal(&dir, &V_UP)) newPortal->r = 2;
+                    else if (Vec2_equal(&dir, &V_DOWN)) newPortal->r = 0;
+                    else if (Vec2_equal(&dir, &V_LEFT)) newPortal->r = 1;
+                    else if (Vec2_equal(&dir, &V_RIGHT)) newPortal->r = 3;
             }
             break;
         }
