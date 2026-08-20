@@ -204,18 +204,20 @@ void Level_draw(SDL_Renderer* renderer, Level* level, Vec2 offset) {
     SDL_RenderTexture(renderer, Level_textures[L_PLAYER], NULL, &dst_rect);
 
     // Draw level number
+    src_rect = (SDL_FRect){0, TILE_SIZE*((SDL_GetTicks()/500)%(Level_textures[L_LEVEL]->h/TILE_SIZE)), Level_textures[L_LEVEL]->w, TILE_SIZE};
     dst_rect.x = 0;
     dst_rect.y = 0;
     dst_rect.w = Level_textures[L_LEVEL]->w;
-    SDL_RenderTexture(renderer, Level_textures[L_LEVEL], NULL, &dst_rect);
+    SDL_RenderTexture(renderer, Level_textures[L_LEVEL], &src_rect, &dst_rect);
     Level_drawNumber(renderer, level->levelNum, 2, (Vec2){Level_textures[L_LEVEL]->w, 0});
 
     // Draw move counter
+    src_rect = (SDL_FRect){0, TILE_SIZE*((SDL_GetTicks()/500)%(Level_textures[L_MOVES]->h/TILE_SIZE)), Level_textures[L_MOVES]->w, TILE_SIZE};
     dst_rect.x = 0;
-    dst_rect.y = Level_textures[L_LEVEL]->h;
+    dst_rect.y = TILE_SIZE;
     dst_rect.w = Level_textures[L_MOVES]->w;
-    SDL_RenderTexture(renderer, Level_textures[L_MOVES], NULL, &dst_rect);
-    Level_drawNumber(renderer, level->state->moves, 2, (Vec2){Level_textures[L_MOVES]->w, Level_textures[L_LEVEL]->h});
+    SDL_RenderTexture(renderer, Level_textures[L_MOVES], &src_rect, &dst_rect);
+    Level_drawNumber(renderer, level->state->moves, 2, (Vec2){Level_textures[L_MOVES]->w, TILE_SIZE});
 }
 
 void Level_newState(Level* level) {
