@@ -187,15 +187,16 @@ void Level_draw(SDL_Renderer* renderer, Level* level, Vec2 offset) {
     }
 
     // Draw portals
+    src_rect.x = (SDL_GetTicks()/100)%TILE_SIZE;
     if (level->state->bluePortal.exists) {
         dst_rect.x = level->state->bluePortal.pos.x*TILE_SIZE + offset.x;
         dst_rect.y = level->state->bluePortal.pos.y*TILE_SIZE + offset.y;
-        SDL_RenderTextureRotated(renderer, Level_textures[L_BLUEPORTAL], NULL, &dst_rect, level->state->bluePortal.r*90, NULL, SDL_FLIP_NONE);
+        SDL_RenderTextureRotated(renderer, Level_textures[L_BLUEPORTAL], &src_rect, &dst_rect, level->state->bluePortal.r*90, NULL, SDL_FLIP_NONE);
     }
     if (level->state->orangePortal.exists) {
         dst_rect.x = level->state->orangePortal.pos.x*TILE_SIZE + offset.x;
         dst_rect.y = level->state->orangePortal.pos.y*TILE_SIZE + offset.y;
-        SDL_RenderTextureRotated(renderer, Level_textures[L_ORANGEPORTAL], NULL, &dst_rect, level->state->orangePortal.r*90, NULL, SDL_FLIP_NONE);
+        SDL_RenderTextureRotated(renderer, Level_textures[L_ORANGEPORTAL], &src_rect, &dst_rect, level->state->orangePortal.r*90, NULL, SDL_FLIP_NONE);
     }
 
     // Draw player
@@ -239,7 +240,7 @@ int Level_isCube(Level* level, Vec2 pos) {
 }
 
 bool Level_isPassable(Level* level, Vec2 pos) {
-    if (Level_isCube(level, pos) > -1) return true;
+    if (Level_isCube(level, pos) > -1) return false;
 
     switch (level->tiles[pos.y][pos.x]) {
         case L_PWALL:
