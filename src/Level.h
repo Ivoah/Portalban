@@ -37,5 +37,5 @@ void Level_draw(SDL_Renderer*, Level*, Vec2);
 void Level_drawNumber(SDL_Renderer*, int, int, Vec2);
 void Level_move(Level*, Vec2);
 void Level_shoot(Level*, Vec2);
-void Level_undo(Level*);
+void Level_undo(Level*, int);
 bool Level_isWon(Level*);

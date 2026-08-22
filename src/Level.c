@@ -296,29 +296,23 @@ void Level_move(Level* level, Vec2 dir) {
 
 void Level_shoot(Level* level, Vec2 dir) {
     Vec2 pos = level->state->playerLocation;
-    while (true) {
-        if (Level_isPassable(level, pos)) {
-            pos = Vec2_add(&pos, &dir);
-        } else {
-            switch (level->tiles[pos.y][pos.x]) {
-                case L_PWALL:
-                    Level_newState(level);
-                    Portal* newPortal = (level->state->lastShotBlue) ? &level->state->orangePortal : &level->state->bluePortal;
-                    level->state->lastShotBlue = !level->state->lastShotBlue;
-                    newPortal->exists = true;
-                    newPortal->pos = pos;
-                    newPortal->r = Vec2_toR(&dir);
-            }
-            break;
-        }
+    while (Level_isPassable(level, pos)) pos = Vec2_add(&pos, &dir);
+    if (level->tiles[pos.y][pos.x] == L_PWALL) {
+        Level_newState(level);
+        Portal* newPortal = (level->state->lastShotBlue) ? &level->state->orangePortal : &level->state->bluePortal;
+        level->state->lastShotBlue = !level->state->lastShotBlue;
+        newPortal->exists = true;
+        newPortal->pos = pos;
+        newPortal->r = Vec2_toR(&dir);
     }
 }
 
-void Level_undo(Level* level) {
-    if (level->state->lastState != NULL) {
+void Level_undo(Level* level, int steps) {
+    if (level->state->lastState != NULL && steps != 0) {
         LevelState* tmp = level->state;
         level->state = level->state->lastState;
         SDL_free(tmp);
+        Level_undo(level, steps - 1);
     }
 }
 
