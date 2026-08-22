@@ -1,59 +1,64 @@
-pban: src/main.c src/Vec2.h src/Vec2.c src/Level.h src/Level.c
-	clang -g -fsanitize=address src/main.c src/Vec2.c src/Level.c `pkg-config --cflags --libs sdl3` -o pban
+.PHONY: all pc vita clean
 
-PHONY := all package clean
-rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
+VITA_CC := arm-vita-eabi-gcc
 
-CC := arm-vita-eabi-gcc
-CXX := arm-vita-eabi-g++
-STRIP := arm-vita-eabi-strip
+VITA_TITLE := Portalban
+VITA_APP_VER := 01.00
+VITA_TITLEID := IVOA00007
 
-PROJECT_TITLE := Portalban
-PROJECT_TITLEID := IVOA00007
+LIBS := sdl3
 
-PROJECT := portalban
-CFLAGS += -Wl,-q -g $(shell arm-vita-eabi-pkg-config --cflags sdl3)
+EXE := portalban
+CFLAGS += $(shell pkg-config --cflags $(LIBS))
+LDFLAGS += $(shell pkg-config --libs $(LIBS))
+VITA_CFLAGS += -Wl,-q -std=gnu17 $(shell arm-vita-eabi-pkg-config --cflags $(LIBS))
+VITA_LDFLAGS += -Wl,-q -std=gnu17 -Wl,-z,nocopyreloc $(shell arm-vita-eabi-pkg-config --libs $(LIBS))
 
-SRC_C :=$(call rwildcard, src/, *.c)
+SOURCES := $(wildcard src/*.c)
 
-OBJ_DIR := out/
-OBJS := $(addprefix out/, $(SRC_C:src/%.c=%.o))
+OBJS := $(addprefix pc_build/, $(SOURCES:src/%.c=%.o))
+VITA_OBJS := $(addprefix vita_build/, $(SOURCES:src/%.c=%.o)) $(VITASDK)/arm-vita-eabi/lib/libSDL3.a
 
-LIBS += $(shell arm-vita-eabi-pkg-config --libs sdl3)
+all: pc vita
+pc: $(EXE)
+vita: $(EXE).vpk
 
-all: package
+$(EXE): $(OBJS)
+	$(CC) -g $^ $(LDFLAGS) -o $@
 
-package: $(PROJECT).vpk
+pc_build/%.o: src/%.c | pc_build
+	$(CC) -c $(CFLAGS) -o $@ $<
 
-$(PROJECT).vpk: eboot.bin param.sfo sce_sys/icon0.png sce_sys/livearea/contents/bg.png sce_sys/livearea/contents/startup.png sce_sys/livearea/contents/template.xml levels sprites
-	vita-pack-vpk -s param.sfo -b eboot.bin \
+$(EXE).vpk: vita_build/$(EXE).self vita_build/param.sfo sce_sys levels sprites
+	vita-pack-vpk -s vita_build/param.sfo -b vita_build/$(EXE).self \
 		--add sce_sys/icon0.png=sce_sys/icon0.png \
 		--add sce_sys/livearea/contents/bg.png=sce_sys/livearea/contents/bg.png \
 		--add sce_sys/livearea/contents/startup.png=sce_sys/livearea/contents/startup.png \
 		--add sce_sys/livearea/contents/template.xml=sce_sys/livearea/contents/template.xml \
 		--add levels=levels \
 		--add sprites=sprites \
-	$(PROJECT).vpk
+		$(EXE).vpk
 
-eboot.bin: $(PROJECT).velf
-	vita-make-fself $(PROJECT).velf eboot.bin
+vita_build/$(EXE).self: vita_build/$(EXE).velf
+	vita-make-fself -c -s $< $@
 
-param.sfo:
-	vita-mksfoex -s TITLE_ID="$(PROJECT_TITLEID)" "$(PROJECT_TITLE)" param.sfo
+vita_build/param.sfo:
+	vita-mksfoex \
+		-s APP_VER="$(VITA_APP_VER)" \
+		-s TITLE_ID="$(VITA_TITLEID)" \
+		"$(VITA_TITLE)" vita_build/param.sfo
 
-$(PROJECT).velf: $(PROJECT).elf
-	$(STRIP) -g $<
+vita_build/$(EXE).velf: vita_build/$(EXE).elf
 	vita-elf-create $< $@
 
-$(PROJECT).elf: $(OBJS)
-	$(CC) -g $^ $(LIBS) -o $@
+vita_build/$(EXE).elf: $(VITA_OBJS)
+	$(VITA_CC) -g $^ $(VITA_LDFLAGS) -o $@
 
-$(OBJ_DIR):
+%_build:
 	mkdir -p $@
 
-out/%.o : src/%.c | $(OBJ_DIR)
-	$(CC) -c $(CFLAGS) -o $@ $<
+vita_build/%.o : src/%.c | vita_build
+	$(VITA_CC) -c $(VITA_CFLAGS) -o $@ $<
 
 clean:
-	rm -f $(PROJECT).velf $(PROJECT).elf $(PROJECT).vpk param.sfo eboot.bin
-	rm -rf $(abspath $(OBJ_DIR))
+	rm -rf $(EXE) $(EXE).vpk *_build

@@ -1,4 +1,4 @@
 .vscode/
-orig/
-pban
-pban.dSYM
+*_build/
+portalban
+portalban.vpk
